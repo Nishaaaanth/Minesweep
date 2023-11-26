@@ -20,12 +20,15 @@ typedef struct Cell {
     int j;
     bool revealed;
     bool contains_mine;
+    bool flagged;
+    int nearby_mines;
 } Cell;
 Cell grid[COLS][ROWS];
 
 void cellDraw(Cell);
 bool indexIsValid(int, int);
 void cellRevealed(int, int);
+int countMines(int, int);
 
 int main(void) {
     srand(time(0));
@@ -34,7 +37,14 @@ int main(void) {
 
     for(size_t i=0; i<COLS; ++i) {
         for(size_t j=0; j<ROWS; ++j) {
-            grid[i][j] = (Cell) {.i = i, .j = j, .contains_mine=false, .revealed=false};
+            grid[i][j] = (Cell) {
+                .i = i,
+                .j = j,
+                .contains_mine=false,
+                .revealed=false,
+                .nearby_mines=-1,
+                .flagged=false,
+            };
         }
     }
 
@@ -42,8 +52,19 @@ int main(void) {
     while(no_of_mines>0) {
         int i = rand() % COLS;
         int j = rand() % COLS;
-        grid[i][j].contains_mine = true;
-        no_of_mines--;
+        
+        if(!grid[i][j].contains_mine) {
+            grid[i][j].contains_mine = true;
+            no_of_mines--;
+        }
+    }
+
+    for(size_t i=0; i<COLS; ++i) {
+        for(size_t j=0; j<ROWS; ++j) {
+            if(!grid[i][j].contains_mine) {
+                grid[i][j].nearby_mines = countMines(i, j);
+            }
+        }
     }
 
     while(!WindowShouldClose()) {
@@ -73,13 +94,21 @@ int main(void) {
 }
 
 void cellDraw(Cell cell) {
+    char w_offset=cell_width/2;
+    char h_offset=cell_height/2;
     if(cell.revealed) {
         if(cell.contains_mine) {
             DrawRectangle(cell.i * cell_width, cell.j * cell_height, cell_width, cell_height, RED);
         } else {
             DrawRectangle(cell.i * cell_width, cell.j * cell_height, cell_width, cell_height, LIGHTGRAY);
+            if(cell.nearby_mines > 0)
+                DrawText(TextFormat("%d", cell.nearby_mines), (cell.i*cell_width)+w_offset, (cell.j*cell_height)+h_offset, cell_height-h_offset, DARKGRAY);
         }
     }
+    else if(cell.flagged) {
+        DrawCircle(cell.i * cell_width, cell.j * cell_height, (int)(cell_width/2), BLACK);
+    }
+
     DrawRectangleLines(cell.i * cell_width, cell.j * cell_height, cell_width, cell_height, BLACK);
 }
 
@@ -88,6 +117,8 @@ bool indexIsValid(int i, int j) {
 }
 
 void cellRevealed(int i, int j) {
+    if(grid[i][j].flagged) return;
+
     grid[i][j].revealed = true;
 
     if(grid[i][j].contains_mine) {
@@ -95,4 +126,15 @@ void cellRevealed(int i, int j) {
     } else {
         //game continues
     }
+}
+
+int countMines(int i, int j) {
+    int count=0;
+    for(int i_adj=-1; i_adj<=1; ++i_adj) {
+        for(int j_adj=-1; j_adj<=1; ++j_adj) {
+            if(i_adj==0 && j_adj==0) continue;
+            if(indexIsValid(i+i_adj, j+j_adj) && grid[i+i_adj][j+j_adj].contains_mine) count++;
+        }
+    }
+    return count;
 }
