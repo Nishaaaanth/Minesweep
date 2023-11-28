@@ -92,7 +92,7 @@ int main(void) {
             DrawText(game_lost, (screen_width-MeasureText(game_lost, result_size))/2, screen_height/2-(result_size/2), result_size, DARKGRAY);
             DrawText(restart, (screen_width-MeasureText(restart, result_size*0.8))/2, screen_height*0.6f, result_size*0.8, DARKGRAY);
 
-            DrawText(TextFormat("Time Lapsed: %d min, %d sec", end_time/60, end_time%60), 0, 0, result_size*0.7f, DARKGRAY);
+            DrawText(TextFormat("Time Lapsed: %d min, %d sec", end_time/60, end_time%60), (result_size*0.7f)/2, (result_size*0.7f)/2, result_size*0.7f, DARKGRAY);
         }
 
         if (state == WIN) {
@@ -100,6 +100,7 @@ int main(void) {
 
             DrawText(game_won, (screen_width-MeasureText(game_won, result_size))/2, screen_height/2-(result_size/2), result_size, DARKGRAY);
             DrawText(restart, (screen_width-MeasureText(restart, result_size*0.8))/2, screen_height*0.6f, result_size*0.8, DARKGRAY);
+            DrawText(TextFormat("Time Lapsed: %d min, %d sec", end_time/60, end_time%60), (result_size*0.7f)/2, (result_size*0.7f)/2, result_size*0.7f, DARKGRAY);
         }
 
         EndDrawing();
@@ -113,7 +114,7 @@ void cellDraw(Cell cell) {
     char h_offset=cell_height/2;
     if(cell.revealed) {
         if(cell.contains_mine) {
-            DrawRectangle(cell.i * cell_width, cell.j * cell_height, cell_width, cell_height, RED);
+            DrawCircle((cell.i * cell_width)+cell_width/2, (cell.j * cell_height)+cell_height/2, (int)cell_width/4, RED);
         } else {
             DrawRectangle(cell.i * cell_width, cell.j * cell_height, cell_width, cell_height, LIGHTGRAY);
             if(cell.nearby_mines > 0)
