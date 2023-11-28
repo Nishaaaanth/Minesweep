@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
-
 #include "raylib.h"
-#include "raymath.h"
 
 #define COLS 10
 #define ROWS 10
@@ -11,9 +9,24 @@ const unsigned short screen_width = 400;
 const unsigned short screen_height = 400;
 const unsigned short cell_width = screen_width/COLS;
 const unsigned short cell_height = screen_height/ROWS;
+const char *game_lost = "YOU LOST!";
+const char *game_won = "YOU WON!";
+const char *restart = "Press \'SPACE\' to restart!"; 
+const char result_size = 26;
+unsigned short cells_revealed = 0;
+unsigned short mines_available = 0;
+unsigned short start_time;
+unsigned short end_time;
 
 enum RANK {EASY=1, MEDIUM=2, HARD=3};
 enum RANK difficulty = EASY;
+
+typedef enum GameState {
+    PLAYING,
+    LOSE,
+    WIN
+} GameState;
+GameState state = PLAYING;
 
 typedef struct Cell {
     int i;
@@ -32,12 +45,13 @@ int countMines(int, int);
 void cellFlag(int, int);
 void gridInit(void);
 void clearCells(int , int);
+void reset();
 
 int main(void) {
     srand(time(0));
 
     InitWindow(screen_height, screen_width, "Minesweeper");
-    gridInit();
+    reset();
 
     while(!WindowShouldClose()) {
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -46,7 +60,7 @@ int main(void) {
             int ind_x = m_pos.x / cell_width;
             int ind_y = m_pos.y / cell_height;
 
-            if(indexIsValid(ind_x, ind_y)) {
+            if(indexIsValid(ind_x, ind_y) && state == PLAYING) {
                 cellRevealed(ind_x, ind_y);
             }
         } else if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -55,10 +69,13 @@ int main(void) {
             int ind_x = m_pos.x / cell_width;
             int ind_y = m_pos.y / cell_height;
 
-            if(indexIsValid(ind_x, ind_y)) {
+            if(indexIsValid(ind_x, ind_y) && state == PLAYING) {
                 cellFlag(ind_x, ind_y);
             }
         }
+
+        if(IsKeyPressed(KEY_SPACE))
+            reset();
 
         BeginDrawing();
 
@@ -67,6 +84,22 @@ int main(void) {
             for(size_t j=0; j<ROWS; ++j) {
                 cellDraw(grid[i][j]);
             }
+        }
+
+        if (state == LOSE) {
+            DrawRectangle(0, 0, screen_width, screen_height, Fade(WHITE, 0.8f));
+
+            DrawText(game_lost, (screen_width-MeasureText(game_lost, result_size))/2, screen_height/2-(result_size/2), result_size, DARKGRAY);
+            DrawText(restart, (screen_width-MeasureText(restart, result_size*0.8))/2, screen_height*0.6f, result_size*0.8, DARKGRAY);
+
+            DrawText(TextFormat("Time Lapsed: %d min, %d sec", end_time/60, end_time%60), 0, 0, result_size*0.7f, DARKGRAY);
+        }
+
+        if (state == WIN) {
+            DrawRectangle(0, 0, screen_width, screen_height, Fade(WHITE, 0.8f));
+
+            DrawText(game_won, (screen_width-MeasureText(game_won, result_size))/2, screen_height/2-(result_size/2), result_size, DARKGRAY);
+            DrawText(restart, (screen_width-MeasureText(restart, result_size*0.8))/2, screen_height*0.6f, result_size*0.8, DARKGRAY);
         }
 
         EndDrawing();
@@ -104,11 +137,18 @@ void cellRevealed(int i, int j) {
     grid[i][j].revealed = true;
 
     if(grid[i][j].contains_mine) {
-        //lose
+        state = LOSE;
+        end_time = GetTime();
     } else {
-        //game continues
-        if(grid[i][j].nearby_mines == 0)
+        if(grid[i][j].nearby_mines == 0) {
             clearCells(i , j);
+        }
+        cells_revealed++;
+
+        if(cells_revealed == ROWS * COLS - mines_available) {
+            state = WIN;
+            end_time = GetTime();
+        }
     }
 }
 
@@ -143,8 +183,9 @@ void gridInit(void) {
             };
         }
     }
-
-    int no_of_mines = (int) (COLS * ROWS * difficulty * 0.1f);
+    
+    mines_available = (int) (COLS * ROWS * difficulty * 0.1f);
+    int no_of_mines = mines_available;
     while(no_of_mines>0) {
         int i = rand() % COLS;
         int j = rand() % COLS;
@@ -162,4 +203,19 @@ void gridInit(void) {
             }
         }
     }
+}
+
+void clearCells(int i, int j) {
+    for(int i_adj=-1; i_adj<=1; ++i_adj) {
+        for(int j_adj=-1; j_adj<=1; ++j_adj) {
+            if(i_adj==0 && j_adj==0) continue;
+            if(indexIsValid(i+i_adj, j+j_adj) && !grid[i+i_adj][j+j_adj].revealed) cellRevealed(i+i_adj, j+j_adj);
+        }
+    }
+}
+
+void reset(void) {
+    gridInit();
+    state = PLAYING;
+    start_time = GetTime();
 }
